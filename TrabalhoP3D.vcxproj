@@ -136,8 +136,8 @@
     <ClInclude Include="LoadShaders.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="light.frag" />
-    <None Include="light.vert" />
+    <None Include="Shaders\light.frag" />
+    <None Include="Shaders\light.vert" />
     <None Include="triangles.frag" />
     <None Include="triangles.vert" />
   </ItemGroup>

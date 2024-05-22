@@ -34,16 +34,16 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="light.frag">
-      <Filter>Arquivos de Recurso</Filter>
-    </None>
-    <None Include="light.vert">
-      <Filter>Arquivos de Recurso</Filter>
-    </None>
     <None Include="triangles.vert">
       <Filter>Arquivos de Recurso</Filter>
     </None>
     <None Include="triangles.frag">
+      <Filter>Arquivos de Recurso</Filter>
+    </None>
+    <None Include="Shaders\light.frag">
+      <Filter>Arquivos de Recurso</Filter>
+    </None>
+    <None Include="Shaders\light.vert">
       <Filter>Arquivos de Recurso</Filter>
     </None>
   </ItemGroup>

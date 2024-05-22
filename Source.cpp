@@ -48,7 +48,7 @@ GLfloat angle = 3.0f;
 bool mousePressed = false;
 double lastMouseX, lastMouseY;
 glm::quat currentRotation;
-GLfloat ZOOM = 10.0f;
+GLfloat fov = 45.0f;
 
 int main(void) {
     GLFWwindow* window;
@@ -120,21 +120,12 @@ void print_error(int error, const char* description) {
 
 //Função callback para o zoom do rato
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-
-    // Se faz zoom in
-    if (yoffset == 1) {
-
-        // Incremento no zoom, varia com a distância da câmara
-        ZOOM += fabs(ZOOM) * 0.1f;
+    if (yoffset == -1) {
+        fov += fabs(fov) * 0.1f;
     }
-
-    // Senão, se faz zoom out
-    else if (yoffset == -1) {
-
-        // Incremento no zoom, varia com a distância da câmara
-        ZOOM -= fabs(ZOOM) * 0.1f;
+    else if (yoffset == 1) {
+        fov -= fabs(fov) * 0.1f;
     }
-
 }
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
@@ -151,18 +142,18 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
 
 void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
     if (mousePressed) {
-        //double dx = xpos - lastMouseX;
-        double dy = ypos - lastMouseY;
-        //lastMouseX = xpos;
-        lastMouseY = ypos;
+        double dx = xpos - lastMouseX;
+        // double dy = ypos - lastMouseY;  // Não é necessário para rotação horizontal
+        lastMouseX = xpos;
+        // lastMouseY = ypos;  // Não é necessário para rotação horizontal
 
-        //float angleX = glm::radians((float)dx);
-        float angleX = glm::radians((float)dy);
+        float angleY = glm::radians((float)dx);
+        // float angleX = glm::radians((float)dy);  // Não é necessário para rotação horizontal
 
-        glm::quat qx = glm::angleAxis(angleX, glm::vec3(0.0f, 1.0f, 0.0f));
-        //glm::quat qy = glm::angleAxis(angleY, glm::vec3(1.0f, 0.0f, 0.0f));
+        glm::quat qy = glm::angleAxis(angleY, glm::vec3(0.0f, 1.0f, 0.0f));
+        // glm::quat qx = glm::angleAxis(angleX, glm::vec3(1.0f, 0.0f, 0.0f));  // Não é necessário para rotação horizontal
 
-        currentRotation = qx * currentRotation;
+        currentRotation = qy * currentRotation;
         currentRotation = glm::normalize(currentRotation);
     }
 }
@@ -255,7 +246,7 @@ void init(void) {
     glEnableVertexAttribArray(normalId);
 
     // Matrizes de transformação
-    Projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+    Projection = glm::perspective(glm::radians(fov), 4.0f / 3.0f, 0.1f, 100.0f);
     View = glm::lookAt(
         glm::vec3(2.0f, 3.0f, 5.0f),    // eye (posição da câmara).
         glm::vec3(0.0f, 0.0f, 0.0f),    // center (para onde está a "olhar")
@@ -321,6 +312,10 @@ void display(void) {
     glm::mat4 RotationMatrix = glm::mat4_cast(currentRotation);
     glm::mat4 ModelView = View * RotationMatrix * Model;
     NormalMatrix = glm::inverseTranspose(glm::mat3(ModelView));
+    Projection = glm::perspective(glm::radians(fov), 4.0f / 3.0f, 0.1f, 100.0f);
+  
+    GLint projectionId = glGetProgramResourceLocation(programa, GL_UNIFORM, "Projection");
+    glProgramUniformMatrix4fv(programa, projectionId, 1, GL_FALSE, glm::value_ptr(Projection));
     GLint modelId = glGetProgramResourceLocation(programa, GL_UNIFORM, "Model");
     glProgramUniformMatrix4fv(programa, modelId, 1, GL_FALSE, glm::value_ptr(RotationMatrix * Model));
     GLint viewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "View");
@@ -329,6 +324,7 @@ void display(void) {
     glProgramUniformMatrix4fv(programa, modelViewId, 1, GL_FALSE, glm::value_ptr(ModelView));
     GLint normalViewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "NormalMatrix");
     glProgramUniformMatrix3fv(programa, normalViewId, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+   
 
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, NumVertices);
