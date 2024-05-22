@@ -23,6 +23,7 @@ using namespace std;
 #include <glm\gtc\type_ptr.hpp>
 #include <glm\gtc\matrix_transform.hpp>
 #include <glm\gtc\matrix_inverse.hpp> // glm::inverseTranspose()
+#include <glm\gtc\quaternion.hpp>
 
 
 void print_error(int error, const char* description);
@@ -30,330 +31,307 @@ void print_gl_info(void);
 void load_textures(vector<string> textureFiles);
 void init(void);
 void display(void);
-
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 
 #define WIDTH 800
 #define HEIGHT 600
 
-
 GLuint VAO;
 GLuint Buffer;
-const GLuint NumVertices = 6 * 2 * 3; // 6 faces * 2 tri�ngulos/face * 3 v�rtices/tri�ngulo
-
+const GLuint NumVertices = 6 * 2 * 3; // 6 faces * 2 triângulos/face * 3 vértices/triângulo
 GLuint programa;
-
 glm::mat4 Model, View, Projection;
 glm::mat3 NormalMatrix;
 GLfloat angle = 3.0f;
+bool mousePressed = false;
+double lastMouseX, lastMouseY;
+glm::quat currentRotation;
+GLfloat ZOOM = 10.0f;
 
 int main(void) {
-	GLFWwindow* window;
+    GLFWwindow* window;
 
-	glfwSetErrorCallback(print_error);
+    glfwSetErrorCallback(print_error);
 
-	if (!glfwInit()) return -1;
+    if (!glfwInit()) return -1;
 
-	window = glfwCreateWindow(WIDTH, HEIGHT, "P3D Trabalho", NULL, NULL);
-	if (window == NULL) {
-		glfwTerminate();
-		return -1;
-	}
+    window = glfwCreateWindow(WIDTH, HEIGHT, "P3D Trabalho", NULL, NULL);
+    if (window == NULL) {
+        glfwTerminate();
+        return -1;
+    }
 
-	glfwMakeContextCurrent(window);
+    glfwMakeContextCurrent(window);
 
-	// Inicia o gestor de extens�es GLEW
-	glewExperimental = GL_TRUE;
-	glewInit();
+    // Inicia o gestor de extensões GLEW
+    glewExperimental = GL_TRUE;
+    glewInit();
 
-	print_gl_info();
+    print_gl_info();
 
-	vector<string> textureFiles{
-		"Texture/texturemesa.jpg",
-		"Texture/texturemesa.jpg",
-		"Texture/texturemesa.jpg",
-		"Texture/texturemesa.jpg",
-		"Texture/texturemesa.jpg",
-		"Texture/texturemesa.jpg",
-	};
-	//load_textures(textureFiles);
+    glfwSetScrollCallback(window, scrollCallback);
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    glfwSetCursorPosCallback(window, cursorPositionCallback);
 
-	init();
+    init();
 
-	// Indica��o da Unidade de Textura a ligar ao sampler 'cubeMap'.
-	//GLint location_textureArray = glGetProgramResourceLocation(programa, GL_UNIFORM, "cubeMap");
-	//glProgramUniform1i(programa, location_textureArray, 0 /* Unidade de Textura #0 */);
+    while (!glfwWindowShouldClose(window)) {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	while (!glfwWindowShouldClose(window)) {
-		glClear(GL_COLOR_BUFFER_BIT);
+        display();
 
-		display();
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
 
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-	}
-
-	glfwTerminate();
-	return 0;
+    glfwTerminate();
+    return 0;
 }
 
 void print_gl_info(void) {
-	GLint major, minor;
-	glGetIntegerv(GL_MAJOR_VERSION, &major);
-	glGetIntegerv(GL_MINOR_VERSION, &minor);
-	cout << "\nOpenGL version " << major << '.' << minor << endl;
+    GLint major, minor;
+    glGetIntegerv(GL_MAJOR_VERSION, &major);
+    glGetIntegerv(GL_MINOR_VERSION, &minor);
+    cout << "\nOpenGL version " << major << '.' << minor << endl;
 
-	const GLubyte* glversion = glGetString(GL_VERSION);
-	const GLubyte* glvendor = glGetString(GL_VENDOR);
-	const GLubyte* glrenderer = glGetString(GL_RENDERER);
-	cout << "\nVersion:  " << glversion << endl <<
-		"Vendor:   " << glvendor << endl <<
-		"Renderer: " << glrenderer << endl;
+    const GLubyte* glversion = glGetString(GL_VERSION);
+    const GLubyte* glvendor = glGetString(GL_VENDOR);
+    const GLubyte* glrenderer = glGetString(GL_RENDERER);
+    cout << "\nVersion:  " << glversion << endl <<
+        "Vendor:   " << glvendor << endl <<
+        "Renderer: " << glrenderer << endl;
 
-	cout << "\nSupported GLSL versions:\n";
-	const GLubyte* glslversion = glGetString(GL_SHADING_LANGUAGE_VERSION);
-	cout << "Higher supported version:\n\t" << glslversion << endl;
-	GLint numglslversions;
-	cout << "Other supported versions:\n";
-	glGetIntegerv(GL_NUM_SHADING_LANGUAGE_VERSIONS, &numglslversions);
-	for (int n = 0; n < numglslversions; n++) {
-		cout << '\t' << glGetStringi(GL_SHADING_LANGUAGE_VERSION, n) << endl;
-	}
+    cout << "\nSupported GLSL versions:\n";
+    const GLubyte* glslversion = glGetString(GL_SHADING_LANGUAGE_VERSION);
+    cout << "Higher supported version:\n\t" << glslversion << endl;
+    GLint numglslversions;
+    cout << "Other supported versions:\n";
+    glGetIntegerv(GL_NUM_SHADING_LANGUAGE_VERSIONS, &numglslversions);
+    for (int n = 0; n < numglslversions; n++) {
+        cout << '\t' << glGetStringi(GL_SHADING_LANGUAGE_VERSION, n) << endl;
+    }
 }
 
 void print_error(int error, const char* description) {
-	cout << description << endl;
+    cout << description << endl;
+}
+
+//Função callback para o zoom do rato
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+
+    // Se faz zoom in
+    if (yoffset == 1) {
+
+        // Incremento no zoom, varia com a distância da câmara
+        ZOOM += fabs(ZOOM) * 0.1f;
+    }
+
+    // Senão, se faz zoom out
+    else if (yoffset == -1) {
+
+        // Incremento no zoom, varia com a distância da câmara
+        ZOOM -= fabs(ZOOM) * 0.1f;
+    }
+
+}
+
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            mousePressed = true;
+            glfwGetCursorPos(window, &lastMouseX, &lastMouseY);
+        }
+        else if (action == GLFW_RELEASE) {
+            mousePressed = false;
+        }
+    }
+}
+
+void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
+    if (mousePressed) {
+        //double dx = xpos - lastMouseX;
+        double dy = ypos - lastMouseY;
+        //lastMouseX = xpos;
+        lastMouseY = ypos;
+
+        //float angleX = glm::radians((float)dx);
+        float angleX = glm::radians((float)dy);
+
+        glm::quat qx = glm::angleAxis(angleX, glm::vec3(0.0f, 1.0f, 0.0f));
+        //glm::quat qy = glm::angleAxis(angleY, glm::vec3(1.0f, 0.0f, 0.0f));
+
+        currentRotation = qx * currentRotation;
+        currentRotation = glm::normalize(currentRotation);
+    }
 }
 
 void init(void) {
-	// ****************************************************
-	// Criar arrays de dados na RAM
-	// ****************************************************
+    // Criar arrays de dados na RAM
+    GLfloat width = 2.0f;
+    GLfloat height = 0.2f;
+    GLfloat depth = 4.0f;
 
-	GLfloat width = 2.0f;
-	GLfloat height = 0.2f;
-	GLfloat depth = 4.0f;	
+    GLfloat vertices[NumVertices * (3 + 3)] = {
+        // Face X+
+        width / 2, -height / 2,  depth / 2,  1.0f, 0.0f, 0.0f,
+        width / 2, -height / 2, -depth / 2,  1.0f, 0.0f, 0.0f,
+        width / 2,  height / 2,  depth / 2,  1.0f, 0.0f, 0.0f,
+        width / 2,  height / 2,  depth / 2,  1.0f, 0.0f, 0.0f,
+        width / 2, -height / 2, -depth / 2,  1.0f, 0.0f, 0.0f,
+        width / 2,  height / 2, -depth / 2,  1.0f, 0.0f, 0.0f,
 
-	GLfloat vertices[NumVertices * (3 + 3)] = {
-		// Face X+
-		width / 2, -height / 2,  depth / 2,  1.0f, 0.0f, 0.0f,
-		width / 2, -height / 2, -depth / 2,  1.0f, 0.0f, 0.0f,
-		width / 2,  height / 2,  depth / 2,  1.0f, 0.0f, 0.0f,
-		width / 2,  height / 2,  depth / 2,  1.0f, 0.0f, 0.0f,
-		width / 2, -height / 2, -depth / 2,  1.0f, 0.0f, 0.0f,
-		width / 2,  height / 2, -depth / 2,  1.0f, 0.0f, 0.0f,
+        // Face X-
+        -width / 2, -height / 2, -depth / 2, -1.0f, 0.0f, 0.0f,
+        -width / 2, -height / 2,  depth / 2, -1.0f, 0.0f, 0.0f,
+        -width / 2,  height / 2, -depth / 2, -1.0f, 0.0f, 0.0f,
+        -width / 2,  height / 2, -depth / 2, -1.0f, 0.0f, 0.0f,
+        -width / 2, -height / 2,  depth / 2, -1.0f, 0.0f, 0.0f,
+        -width / 2,  height / 2,  depth / 2, -1.0f, 0.0f, 0.0f,
 
-		// Face X-
-		-width / 2, -height / 2, -depth / 2, -1.0f, 0.0f, 0.0f,
-		-width / 2, -height / 2,  depth / 2, -1.0f, 0.0f, 0.0f,
-		-width / 2,  height / 2, -depth / 2, -1.0f, 0.0f, 0.0f,
-		-width / 2,  height / 2, -depth / 2, -1.0f, 0.0f, 0.0f,
-		-width / 2, -height / 2,  depth / 2, -1.0f, 0.0f, 0.0f,
-		-width / 2,  height / 2,  depth / 2, -1.0f, 0.0f, 0.0f,
+        // Face Y+
+        -width / 2,  height / 2,  depth / 2, 0.0f, 1.0f, 0.0f,
+         width / 2,  height / 2,  depth / 2, 0.0f, 1.0f, 0.0f,
+        -width / 2,  height / 2, -depth / 2, 0.0f, 1.0f, 0.0f,
+        -width / 2,  height / 2, -depth / 2, 0.0f, 1.0f, 0.0f,
+         width / 2,  height / 2,  depth / 2, 0.0f, 1.0f, 0.0f,
+         width / 2,  height / 2, -depth / 2, 0.0f, 1.0f, 0.0f,
 
-		// Face Y+
-		-width / 2,  height / 2,  depth / 2, 0.0f, 1.0f, 0.0f,
-		 width / 2,  height / 2,  depth / 2, 0.0f, 1.0f, 0.0f,
-		-width / 2,  height / 2, -depth / 2, 0.0f, 1.0f, 0.0f,
-		-width / 2,  height / 2, -depth / 2, 0.0f, 1.0f, 0.0f,
-		 width / 2,  height / 2,  depth / 2, 0.0f, 1.0f, 0.0f,
-		 width / 2,  height / 2, -depth / 2, 0.0f, 1.0f, 0.0f,
+         // Face Y-
+         -width / 2, -height / 2, -depth / 2, 0.0f, -1.0f, 0.0f,
+          width / 2, -height / 2, -depth / 2, 0.0f, -1.0f, 0.0f,
+         -width / 2, -height / 2,  depth / 2, 0.0f, -1.0f, 0.0f,
+         -width / 2, -height / 2,  depth / 2, 0.0f, -1.0f, 0.0f,
+          width / 2, -height / 2, -depth / 2, 0.0f, -1.0f, 0.0f,
+          width / 2, -height / 2,  depth / 2, 0.0f, -1.0f, 0.0f,
 
-		 // Face Y-
-		 -width / 2, -height / 2, -depth / 2, 0.0f, -1.0f, 0.0f,
-		  width / 2, -height / 2, -depth / 2, 0.0f, -1.0f, 0.0f,
-		 -width / 2, -height / 2,  depth / 2, 0.0f, -1.0f, 0.0f,
-		 -width / 2, -height / 2,  depth / 2, 0.0f, -1.0f, 0.0f,
-		  width / 2, -height / 2, -depth / 2, 0.0f, -1.0f, 0.0f,
-		  width / 2, -height / 2,  depth / 2, 0.0f, -1.0f, 0.0f,
+          // Face Z+
+          -width / 2, -height / 2,  depth / 2, 0.0f, 0.0f, 1.0f,
+           width / 2, -height / 2,  depth / 2, 0.0f, 0.0f, 1.0f,
+          -width / 2,  height / 2,  depth / 2, 0.0f, 0.0f, 1.0f,
+          -width / 2,  height / 2,  depth / 2, 0.0f, 0.0f, 1.0f,
+           width / 2, -height / 2,  depth / 2, 0.0f, 0.0f, 1.0f,
+           width / 2,  height / 2,  depth / 2, 0.0f, 0.0f, 1.0f,
 
-		  // Face Z+
-		  -width / 2, -height / 2,  depth / 2, 0.0f, 0.0f, 1.0f,
-		   width / 2, -height / 2,  depth / 2, 0.0f, 0.0f, 1.0f,
-		  -width / 2,  height / 2,  depth / 2, 0.0f, 0.0f, 1.0f,
-		  -width / 2,  height / 2,  depth / 2, 0.0f, 0.0f, 1.0f,
-		   width / 2, -height / 2,  depth / 2, 0.0f, 0.0f, 1.0f,
-		   width / 2,  height / 2,  depth / 2, 0.0f, 0.0f, 1.0f,
+           // Face Z-
+            width / 2, -height / 2, -depth / 2, 0.0f, 0.0f, -1.0f,
+           -width / 2, -height / 2, -depth / 2, 0.0f, 0.0f, -1.0f,
+            width / 2,  height / 2, -depth / 2, 0.0f, 0.0f, -1.0f,
+            width / 2,  height / 2, -depth / 2, 0.0f, 0.0f, -1.0f,
+           -width / 2, -height / 2, -depth / 2, 0.0f, 0.0f, -1.0f,
+           -width / 2,  height / 2, -depth / 2, 0.0f, 0.0f, -1.0f
+    };
 
-		   // Face Z-
-			width / 2, -height / 2, -depth / 2, 0.0f, 0.0f, -1.0f,
-		   -width / 2, -height / 2, -depth / 2, 0.0f, 0.0f, -1.0f,
-			width / 2,  height / 2, -depth / 2, 0.0f, 0.0f, -1.0f,
-			width / 2,  height / 2, -depth / 2, 0.0f, 0.0f, -1.0f,
-		   -width / 2, -height / 2, -depth / 2, 0.0f, 0.0f, -1.0f,
-		   -width / 2,  height / 2, -depth / 2, 0.0f, 0.0f, -1.0f
-	};
+    // VAOs - Vertex Array Objects
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
 
-	// ****************************************************
-	// VAOs - Vertex Array Objects
-	// ****************************************************
+    // VBOs - Vertex Buffer Objects
+    glGenBuffers(1, &Buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, Buffer);
+    glBufferStorage(GL_ARRAY_BUFFER, sizeof(vertices), vertices, 0);
 
-	// Gerar nomes para VAOs.
-	// Neste caso gera apenas 1 nome.
-	glGenVertexArrays(1, &VAO);
-	// Faz bind do VAO, cujo nome est� definido em 'VAO', com o contexto do OpenGL.
-	// Um VAO � criado no primero bind que lhe seja feito.
-	// Este VAO passa a estar ativo at� que seja feito o bind a outro VAO, ou seja feito o bind com valor 0.
-	glBindVertexArray(VAO);
+    // Shaders
+    ShaderInfo  shaders[] = {
+        { GL_VERTEX_SHADER,   "Shaders/light.vert" },
+        { GL_FRAGMENT_SHADER, "Shaders/light.frag" },
+        { GL_NONE, NULL }
+    };
 
-	// ****************************************************
-	// VBOs - Vertex Buffer Objects
-	// ****************************************************
+    programa = LoadShaders(shaders);
+    if (!programa) exit(EXIT_FAILURE);
+    glUseProgram(programa);
 
-	// Gera 'NumBuffers' nomes para VBOs.
-	// Neste caso gera 1 nome
-	// Esta fun��o pode ser chamada antes da cria��o de VAOs.
-	glGenBuffers(1, &Buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, Buffer);
-	// Inicializa o VBO (que est� ativo) com dados imut�veis.
-	glBufferStorage(GL_ARRAY_BUFFER, sizeof(vertices), vertices, 0);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    // Ligar Atributos aos Shaders
+    GLint coordsId = glGetProgramResourceLocation(programa, GL_PROGRAM_INPUT, "vPosition");
+    GLint normalId = glGetProgramResourceLocation(programa, GL_PROGRAM_INPUT, "vNormal");
 
-	// ****************************************************
-	// Shaders
-	// ****************************************************
+    glBindBuffer(GL_ARRAY_BUFFER, Buffer);
+    glVertexAttribPointer(coordsId, 3, GL_FLOAT, GL_FALSE, (3 + 3) * sizeof(float), (void*)0);
+    glVertexAttribPointer(normalId, 3, GL_FLOAT, GL_TRUE, (3 + 3) * sizeof(float), (void*)(3 * sizeof(float)));
 
-	ShaderInfo  shaders[] = {
-		{ GL_VERTEX_SHADER,   "Shaders/light.vert" },
-		{ GL_FRAGMENT_SHADER, "Shaders/light.frag" },
-		{ GL_NONE, NULL }
-	};
+    glEnableVertexAttribArray(coordsId);
+    glEnableVertexAttribArray(normalId);
 
-	programa = LoadShaders(shaders);
-	if (!programa) exit(EXIT_FAILURE);
-	glUseProgram(programa);
+    // Matrizes de transformação
+    Projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
+    View = glm::lookAt(
+        glm::vec3(2.0f, 3.0f, 5.0f),    // eye (posição da câmara).
+        glm::vec3(0.0f, 0.0f, 0.0f),    // center (para onde está a "olhar")
+        glm::vec3(0.0f, 1.0f, 0.0f)        // up
+    );
+    Model = glm::mat4(1.0f);
+    glm::mat4 ModelView = View * Model;
+    NormalMatrix = glm::inverseTranspose(glm::mat3(ModelView));
 
-	// ****************************************************
-	// Ligar Atributos aos Shaders
-	// ****************************************************
+    // Uniforms
+    GLint modelId = glGetProgramResourceLocation(programa, GL_UNIFORM, "Model");
+    glProgramUniformMatrix4fv(programa, modelId, 1, GL_FALSE, glm::value_ptr(Model));
+    GLint viewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "View");
+    glProgramUniformMatrix4fv(programa, viewId, 1, GL_FALSE, glm::value_ptr(View));
+    GLint modelViewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "ModelView");
+    glProgramUniformMatrix4fv(programa, modelViewId, 1, GL_FALSE, glm::value_ptr(ModelView));
+    GLint projectionId = glGetProgramResourceLocation(programa, GL_UNIFORM, "Projection");
+    glProgramUniformMatrix4fv(programa, projectionId, 1, GL_FALSE, glm::value_ptr(Projection));
+    GLint normalViewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "NormalMatrix");
+    glProgramUniformMatrix3fv(programa, normalViewId, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
-	// Obt�m a localiza��o do atributo 'vPosition' no 'programa'.
-	GLint coordsId = glGetProgramResourceLocation(programa, GL_PROGRAM_INPUT, "vPosition");
-	// Obt�m a localiza��o do atributo 'vNormal' no 'programa'.
-	GLint normalId = glGetProgramResourceLocation(programa, GL_PROGRAM_INPUT, "vNormal");
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "ambientLight.ambient"), 1, glm::value_ptr(glm::vec3(0.1, 0.1, 0.1)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "directionalLight.direction"), 1, glm::value_ptr(glm::vec3(1.0, 0.0, 0.0)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "directionalLight.ambient"), 1, glm::value_ptr(glm::vec3(0.2, 0.2, 0.2)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "directionalLight.diffuse"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "directionalLight.specular"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
 
-	// Ativa o VBO 'Buffer'.
-	glBindBuffer(GL_ARRAY_BUFFER, Buffer);
-	// Liga a localiza��o do atributo 'vPosition' dos shaders do 'programa', ao VBO e VAO (ativos).
-	// Especifica tamb�m como � que a informa��o do atributo 'coordsId' deve ser interpretada.
-	// Neste caso, o atributo ir� receber, por v�rtice, 3 elementos do tipo float. Stride de 6 floats e offset de 0 bytes.
-	glVertexAttribPointer(coordsId, 3 /*3 elementos por v�rtice*/, GL_FLOAT/*do tipo float*/, GL_FALSE, (3 + 3) * sizeof(float) /*stride*/, (void*)0);
-	glVertexAttribPointer(normalId, 3 /*3 elementos por v�rtice*/, GL_FLOAT/*do tipo float*/, GL_TRUE, (3 + 3) * sizeof(float) /*stride*/, (void*)(3 * sizeof(float)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].position"), 1, glm::value_ptr(glm::vec3(0.0, 0.0, 5.0)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].ambient"), 1, glm::value_ptr(glm::vec3(0.1, 0.1, 0.1)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].diffuse"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].specular"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
+    glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].constant"), 1.0f);
+    glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].linear"), 0.06f);
+    glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].quadratic"), 0.02f);
 
-	// Habitita o atributo com localiza��o 'coresId' para o VAO ativo.
-	glEnableVertexAttribArray(coordsId);
-	// Habitita o atributo com localiza��o 'normalId' para o VAO ativo.
-	glEnableVertexAttribArray(normalId);
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].position"), 1, glm::value_ptr(glm::vec3(-2.0, 2.0, 5.0)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].ambient"), 1, glm::value_ptr(glm::vec3(0.1, 0.1, 0.1)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].diffuse"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].specular"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
+    glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].constant"), 1.0f);
+    glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].linear"), 0.06f);
+    glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].quadratic"), 0.02f);
 
-	// ****************************************************
-	// Matrizes de transforma��o
-	// ****************************************************
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "material.emissive"), 1, glm::value_ptr(glm::vec3(0.0, 0.5, 0.0)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "material.ambient"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "material.diffuse"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
+    glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "material.specular"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
+    glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "material.shininess"), 12.0f);
 
-	Projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-	View = glm::lookAt(
-		glm::vec3(0.0f, 3.0f, 5.0f),	// eye (posi��o da c�mara).
-		glm::vec3(0.0f, 0.0f, 0.0f),	// center (para onde est� a "olhar")
-		glm::vec3(0.0f, 1.0f, 0.0f)		// up
-	);
-	Model = glm::rotate(glm::mat4(5.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 ModelView = View * Model;
-	NormalMatrix = glm::inverseTranspose(glm::mat3(ModelView));
-
-	// ****************************************************
-	// Uniforms
-	// ****************************************************
-
-	// Atribui valor ao uniform Model
-	GLint modelId = glGetProgramResourceLocation(programa, GL_UNIFORM, "Model");
-	glProgramUniformMatrix4fv(programa, modelId, 1, GL_FALSE, glm::value_ptr(Model));
-	// Atribui valor ao uniform View
-	GLint viewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "View");
-	glProgramUniformMatrix4fv(programa, viewId, 1, GL_FALSE, glm::value_ptr(View));
-	// Atribui valor ao uniform ModelView
-	GLint modelViewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "ModelView");
-	glProgramUniformMatrix4fv(programa, modelViewId, 1, GL_FALSE, glm::value_ptr(ModelView));
-	// Atribui valor ao uniform Projection
-	GLint projectionId = glGetProgramResourceLocation(programa, GL_UNIFORM, "Projection");
-	glProgramUniformMatrix4fv(programa, projectionId, 1, GL_FALSE, glm::value_ptr(Projection));
-	// Atribui valor ao uniform NormalMatrix
-	GLint normalViewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "NormalMatrix");
-	glProgramUniformMatrix3fv(programa, normalViewId, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-
-	// Fonte de luz ambiente global
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "ambientLight.ambient"), 1, glm::value_ptr(glm::vec3(0.1, 0.1, 0.1)));
-
-	// Fonte de luz direcional
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "directionalLight.direction"), 1, glm::value_ptr(glm::vec3(1.0, 0.0, 0.0)));
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "directionalLight.ambient"), 1, glm::value_ptr(glm::vec3(0.2, 0.2, 0.2)));
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "directionalLight.diffuse"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "directionalLight.specular"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-
-	// Fonte de luz pontual #1
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].position"), 1, glm::value_ptr(glm::vec3(0.0, 0.0, 5.0)));
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].ambient"), 1, glm::value_ptr(glm::vec3(0.1, 0.1, 0.1)));
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].diffuse"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].specular"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-	glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].constant"), 1.0f);
-	glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].linear"), 0.06f);
-	glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[0].quadratic"), 0.02f);
-
-	// Fonte de luz pontual #2
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].position"), 1, glm::value_ptr(glm::vec3(-2.0, 2.0, 5.0)));
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].ambient"), 1, glm::value_ptr(glm::vec3(0.1, 0.1, 0.1)));
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].diffuse"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].specular"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-	glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].constant"), 1.0f);
-	glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].linear"), 0.06f);
-	glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "pointLight[1].quadratic"), 0.02f);
-
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "material.emissive"), 1, glm::value_ptr(glm::vec3(0.0, 0.5, 0.0)));
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "material.ambient"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "material.diffuse"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-	glProgramUniform3fv(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "material.specular"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-	glProgramUniform1f(programa, glGetProgramResourceLocation(programa, GL_UNIFORM, "material.shininess"), 12.0f);
-
-	// ****************************************************
-	// Definir a janela de visualiza��o (viewport)
-	// ****************************************************
-
-	glViewport(0, 0, WIDTH, HEIGHT);
-
-	// ****************************************************
-	// Outros par�metros do OpenGL
-	// ****************************************************
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE); // Por defeito est� desativado
-	glCullFace(GL_BACK); // GL_FRONT, [GL_BACK], GL_FRONT_AND_BACK
+    glViewport(0, 0, WIDTH, HEIGHT);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
 }
 
 void display(void) {
-	static const GLfloat black[] = {
-		0.0f, 0.0f, 0.0f, 0.0f
-	};
-	// Limpa o buffer de cor
-	glClearBufferfv(GL_COLOR, 0, black);
-	// Limpa o buffer de profundidade
-	glClear(GL_DEPTH_BUFFER_BIT);
+    static const GLfloat black[] = {
+        0.0f, 0.0f, 0.0f, 0.0f
+    };
+    glClearBufferfv(GL_COLOR, 0, black);
+    glClear(GL_DEPTH_BUFFER_BIT);
 
-	// Atualiza os dados do Uniform
-	//Model = glm::rotate(glm::mat4(1.0f), angle += 0.0002f, glm::normalize(glm::vec3(1.0f, 1.0f, 0.0f)));
-	glm::mat4 ModelView = View * Model;
-	NormalMatrix = glm::inverseTranspose(glm::mat3(ModelView));
-	// Atribui valor ao uniform Model
-	GLint modelId = glGetProgramResourceLocation(programa, GL_UNIFORM, "Model");
-	glProgramUniformMatrix4fv(programa, modelId, 1, GL_FALSE, glm::value_ptr(Model));
-	GLint viewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "View");
-	glProgramUniformMatrix4fv(programa, viewId, 1, GL_FALSE, glm::value_ptr(View));
-	GLint modelViewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "ModelView");
-	glProgramUniformMatrix4fv(programa, modelViewId, 1, GL_FALSE, glm::value_ptr(ModelView));
-	// Atribui valor ao uniform NormalMatrix
-	GLint normalViewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "NormalMatrix");
-	glProgramUniformMatrix3fv(programa, normalViewId, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+    glm::mat4 RotationMatrix = glm::mat4_cast(currentRotation);
+    glm::mat4 ModelView = View * RotationMatrix * Model;
+    NormalMatrix = glm::inverseTranspose(glm::mat3(ModelView));
+    GLint modelId = glGetProgramResourceLocation(programa, GL_UNIFORM, "Model");
+    glProgramUniformMatrix4fv(programa, modelId, 1, GL_FALSE, glm::value_ptr(RotationMatrix * Model));
+    GLint viewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "View");
+    glProgramUniformMatrix4fv(programa, viewId, 1, GL_FALSE, glm::value_ptr(View));
+    GLint modelViewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "ModelView");
+    glProgramUniformMatrix4fv(programa, modelViewId, 1, GL_FALSE, glm::value_ptr(ModelView));
+    GLint normalViewId = glGetProgramResourceLocation(programa, GL_UNIFORM, "NormalMatrix");
+    glProgramUniformMatrix3fv(programa, normalViewId, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
 
-	// Vincula (torna ativo) o VAO
-	glBindVertexArray(VAO);
-	// Envia comando para desenho de primitivas GL_TRIANGLES, que utilizar� os dados do VAO vinculado.
-	glDrawArrays(GL_TRIANGLES, 0, NumVertices);
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_TRIANGLES, 0, NumVertices);
 }
 
 void load_textures(vector<string> textureFiles) {
