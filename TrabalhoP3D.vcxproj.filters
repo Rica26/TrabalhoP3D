@@ -24,6 +24,9 @@
     <ClCompile Include="LoadShaders.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
+    <ClCompile Include="Table.cpp">
+      <Filter>Arquivos de Origem</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LoadObj.h">
@@ -32,18 +35,21 @@
     <ClInclude Include="LoadShaders.h">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
+    <ClInclude Include="Table.h">
+      <Filter>Arquivos de Cabeçalho</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="triangles.vert">
-      <Filter>Arquivos de Recurso</Filter>
-    </None>
-    <None Include="triangles.frag">
-      <Filter>Arquivos de Recurso</Filter>
-    </None>
     <None Include="Shaders\light.frag">
       <Filter>Arquivos de Recurso</Filter>
     </None>
     <None Include="Shaders\light.vert">
+      <Filter>Arquivos de Recurso</Filter>
+    </None>
+    <None Include="Shaders\poolballs.frag">
+      <Filter>Arquivos de Recurso</Filter>
+    </None>
+    <None Include="Shaders\poolballs.vert">
       <Filter>Arquivos de Recurso</Filter>
     </None>
   </ItemGroup>
