@@ -12,6 +12,7 @@
 #include <Windows.h>
 #include <gl\glew.h>
 #include <GL\GL.h>
+#include "Camera.h"
 
 
 #include <GLFW\glfw3.h>
@@ -19,48 +20,50 @@
 #include <glm/glm.hpp> 
 #include <glm/gtc/matrix_transform.hpp> 
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 
 namespace LoadObj
 {
-//	class Ball
-//	{
-//		struct Material {
-//			glm::vec3 ambient; // Ambient
-//			glm::vec3 diffuse; // Diffuse
-//			glm::vec3 specular; // Specular
-//			float shininess;     // Shininess
-//			GLuint textureID; // Texture ID
-//			std::string textureFilePath; // Texture file path
-//		};
-//	public:
-//		void Load(const std::string& obj_model_filepath);
-//		void Install();
-//		void Render(glm::vec3 position, glm::vec3 orientation);
-//		void LoadMaterial(const std::string& mtl_file_path);
-//		void LoadTexture(const std::string& file_path, GLuint& textureID);
-//	private:
-//
-//		// Estruturas de dados para armazenar vértices, normais, e coordenadas de textura
-//		std::vector<glm::vec3> vertices;
-//		std::vector<glm::vec3> normals;
-//		std::vector<glm::vec2> textcoords;
-//		std::vector<unsigned int> indiceVert,indiceNormal,indiceUv;
-//
-//		// VAO e VBO
-//		GLuint VAO;
-//		GLuint VBO_vertices;
-//		GLuint VBO_normals;
-//		GLuint VBO_textcoords;
-//		GLuint EBO;
-//		GLuint shaderProgram;
-//		Material material;
-//
-//
-//	};
-//
-//
-//	
-//
-//}
+	class Ball
+	{
+
+	public:
+		Ball(const glm::vec3& initialPositon, GLuint TextureID, GLuint shaderProgram, const Camera& camera, glm::vec3 orientation=glm::vec3(0,0,0), GLfloat scale=0.15f);
+		void Load(const std::string obj_model_filepath);
+		void Install();
+		void Render(glm::vec3 position, glm::vec3 orientation);
+		glm::vec3 position;
+		glm::vec3 orientation;
+		std::vector<glm::vec3> vertices;
+		std::vector<glm::vec3> normals;
+		std::vector<glm::vec2> textcoords;
+		static std::vector<glm::vec3> getInitialBallPositions();
+
+		
+	private:
+
+		void LoadMaterial(char* mtl_file_path);
+		void LoadTexture(const char* file_path);
+		glm::mat4 model;
+		glm::mat4 view;
+		glm::mat4 projection;
+		glm::mat3 normalMatrix;
+
+		// VAO e VBO
+		GLuint VAO;
+		GLuint VBO_vertices;
+		GLuint VBO_normals;
+		GLuint VBO_textcoords;
+		GLuint shaderProgram;
+		GLuint textureID;
+		const Camera& camera;
+		GLfloat scale;
+
+	};
+
+
+	
+
+}
 
 #endif // LOADOBJ_H

@@ -16,6 +16,8 @@ using namespace std;
 
 //#include "LoadShaders.h"
 #include "Table.h"
+#include "LoadObj.h"
+#include "Camera.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -28,9 +30,9 @@ using namespace std;
 
 void print_error(int error, const char* description);
 void print_gl_info(void);
-void init();
-void display();
-void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+void init(GLuint tableProgram);
+//void display(GLuint tableProgram);
+//void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 
@@ -40,9 +42,11 @@ void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 bool mousePressed = false;
 double lastMouseX, lastMouseY;
 Table table;
+std::vector<glm::vec3> initialPositions = LoadObj::Ball::getInitialBallPositions();
+Camera camera;
 
 int main(void) {
-    GLFWwindow* window;
+    GLFWwindow* window; 
 
     glfwSetErrorCallback(print_error);
 
@@ -62,16 +66,65 @@ int main(void) {
     print_gl_info();
 
 
-    glfwSetScrollCallback(window, scrollCallback);
+    //glfwSetScrollCallback(window, scrollCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetCursorPosCallback(window, cursorPositionCallback);
 
-    init();
+    ShaderInfo tableShaders[] = {
+            
+        { GL_VERTEX_SHADER, "Shaders/light.vert" },
+        { GL_FRAGMENT_SHADER, "Shaders/light.frag" },
+        { GL_NONE, NULL }
+    };
+
+    ShaderInfo ballShaders[] = {
+		{ GL_VERTEX_SHADER, "Shaders/poolballs.vert" },
+		{ GL_FRAGMENT_SHADER, "Shaders/poolballs.frag" },
+		{ GL_NONE, NULL }
+	};
+
+    
+
+    GLuint tableProgram = LoadShaders(tableShaders);
+    GLuint ballProgram = LoadShaders(ballShaders);
+
+    if (!ballProgram) {
+        cout << "Failed to load ball shaders" << endl;
+        return -1;
+    }
+
+    std::cout << "Table program: " << tableProgram << std::endl;
+    std::cout << "Ball program: " << ballProgram << std::endl;
+
+    init(tableProgram);
+    LoadObj::Ball ball1(glm::vec3(0, 0, 0), 3, ballProgram, camera);
+    ball1.Load("Ball15.obj");
+    ball1.Install();
+    LoadObj::Ball ball2(glm::vec3(0, 0, 0), 2, ballProgram, camera);
+    ball2.Load("Ball2.obj");
+    ball2.Install();
+
+    std::cout << ball1.position.x << std::endl;
+    
+    glViewport(0, 0, WIDTH, HEIGHT);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
 
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        display();
+        static const GLfloat black[] =
+        {
+              0.0f, 0.0f, 0.0f, 0.0f
+        };
+        glClearBufferfv(GL_COLOR, 0, black);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        table.drawTable(tableProgram, camera);
+        ball1.Render(glm::vec3(1, 5, 0), glm::vec3(0, 0, 0));
+        ball1.Render(glm::vec3(5, 5, 0), glm::vec3(0, 0, 0));
+
+        
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -109,9 +162,9 @@ void print_error(int error, const char* description) {
     cout << description << endl;
 }
 
-void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-    table.Zoom(yoffset);
-}
+//void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+//    table.Zoom(yoffset);
+//}
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
@@ -134,22 +187,16 @@ void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
     }
 }
 
-void init() {
-    table.init();
+void init(GLuint tableProgram) {
+
+    table.init(tableProgram);
+    //LoadObj::Ball ball;
+    //ball.Load("Balls/ball2.obj");
+    //ball.Install();
     glViewport(0, 0, WIDTH, HEIGHT);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
-}
-
-void display() {
-    static const GLfloat black[] =
-    {
-          0.0f, 0.0f, 0.0f, 0.0f
-    };
-    glClearBufferfv(GL_COLOR, 0, black);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    table.drawTable();
 }
 
 

@@ -1,7 +1,9 @@
 #include "Table.h"
 
 
-Table::Table() : fov(45.0f), currentRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)) {
+Table::Table() : VAO(0), VBO_vertices(0), VBO_normals(0), model(glm::mat4(1.0f)),
+view(glm::mat4(1.0f)), projection(glm::mat4(1.0f)), normalMatrix(glm::mat3(1.0f)),
+currentRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f)) {
     // Constructor
 }
 
@@ -10,26 +12,16 @@ Table::~Table() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO_vertices);
     glDeleteBuffers(1, &VBO_normals);
-    glDeleteProgram(shaderProgram);
 }
 
-void Table::init() {
-    setupShaders();
-    setupVBO();
-    setupUniforms();
+void Table::init(GLuint shaderProgram) {
+    
+    setupVBO(shaderProgram);
 }
 
-void Table::setupShaders() {
-    ShaderInfo tableShaders[] = {
-		{ GL_VERTEX_SHADER, "Shaders/light.vert" },
-		{ GL_FRAGMENT_SHADER, "Shaders/light.frag" },
-		{ GL_NONE, NULL }
-	};
 
-	shaderProgram = LoadShaders(tableShaders);
-}
 
-void Table::setupVBO() 
+void Table::setupVBO(GLuint shaderProgram) 
 {
     GLfloat width = 2.0f;
     GLfloat height = 0.2f;
@@ -156,17 +148,14 @@ void Table::setupVBO()
     glVertexAttribPointer(vertexNormal, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
     glEnableVertexAttribArray(vertexNormal);
 
+    glBindVertexArray(0);
+
 }
 
-void Table::setupUniforms() {
+void Table::setupUniforms(GLuint shaderProgram,const Camera& camera) {
     // Configurar as matrizes de transformação
-    projection = glm::perspective(glm::radians(45.0f), 4.0f / 3.0f, 0.1f, 100.0f);
-    view = glm::lookAt(
-        glm::vec3(2.0f, 3.0f, 5.0f),    // Posição da câmera
-        glm::vec3(0.0f, 0.0f, 0.0f),    // Ponto para onde a câmera está olhando
-        glm::vec3(0.0f, 1.0f, 0.0f)     // Vetor "up"
-    );
-    model = glm::mat4(1.0f);
+    projection = camera.getProjectionMatrix(4.0f / 3.0f);
+    view = camera.getViewMatrix();
 
     glm::mat4 modelView = view * model;
     normalMatrix = glm::inverseTranspose(glm::mat3(modelView));
@@ -182,6 +171,30 @@ void Table::setupUniforms() {
     GLint modelViewId = glGetUniformLocation(shaderProgram, "ModelView");
     glUniformMatrix4fv(modelViewId, 1, GL_FALSE, glm::value_ptr(modelView));
 
+    GLint normalMatrixId = glGetUniformLocation(shaderProgram, "NormalMatrix");
+    glUniformMatrix3fv(normalMatrixId, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+}
+
+void Table::drawTable(GLuint shaderProgram,const Camera& camera) {
+    
+    setupUniforms(shaderProgram, camera);
+    
+    glBindVertexArray(VAO);
+    
+    glUseProgram(shaderProgram);
+    glm::mat4 RotationMatrix = glm::mat4_cast(currentRotation);
+    glm::mat4 ModelView = view * RotationMatrix * model;
+    normalMatrix = glm::inverseTranspose(glm::mat3(ModelView));
+    projection = camera.getProjectionMatrix(4.0f / 3.0f);
+
+    GLint projectionId = glGetUniformLocation(shaderProgram, "Projection");
+    glUniformMatrix4fv(projectionId, 1, GL_FALSE, glm::value_ptr(projection));
+    GLint modelId = glGetUniformLocation(shaderProgram, "Model");
+    glUniformMatrix4fv(modelId, 1, GL_FALSE, glm::value_ptr(RotationMatrix * model));
+    GLint viewId = glGetUniformLocation(shaderProgram, "View");
+    glUniformMatrix4fv(viewId, 1, GL_FALSE, glm::value_ptr(view));
+    GLint modelViewId = glGetUniformLocation(shaderProgram, "ModelView");
+    glUniformMatrix4fv(modelViewId, 1, GL_FALSE, glm::value_ptr(ModelView));
     GLint normalMatrixId = glGetUniformLocation(shaderProgram, "NormalMatrix");
     glUniformMatrix3fv(normalMatrixId, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
@@ -212,28 +225,11 @@ void Table::setupUniforms() {
     glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "material.diffuse"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
     glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "material.specular"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
     glProgramUniform1f(shaderProgram, glGetUniformLocation(shaderProgram, "material.shininess"), 12.0f);
-}
 
-void Table::drawTable() {
-    glUseProgram(shaderProgram);
-    glm::mat4 RotationMatrix = glm::mat4_cast(currentRotation);
-    glm::mat4 ModelView = view * RotationMatrix * model;
-    normalMatrix = glm::inverseTranspose(glm::mat3(ModelView));
-    projection = glm::perspective(glm::radians(fov), 4.0f / 3.0f, 0.1f, 100.0f);
-
-    GLint projectionId = glGetUniformLocation(shaderProgram, "Projection");
-    glUniformMatrix4fv(projectionId, 1, GL_FALSE, glm::value_ptr(projection));
-    GLint modelId = glGetUniformLocation(shaderProgram, "Model");
-    glUniformMatrix4fv(modelId, 1, GL_FALSE, glm::value_ptr(RotationMatrix * model));
-    GLint viewId = glGetUniformLocation(shaderProgram, "View");
-    glUniformMatrix4fv(viewId, 1, GL_FALSE, glm::value_ptr(view));
-    GLint modelViewId = glGetUniformLocation(shaderProgram, "ModelView");
-    glUniformMatrix4fv(modelViewId, 1, GL_FALSE, glm::value_ptr(ModelView));
-    GLint normalMatrixId = glGetUniformLocation(shaderProgram, "NormalMatrix");
-    glUniformMatrix3fv(normalMatrixId, 1, GL_FALSE, glm::value_ptr(normalMatrix));
-
-    glBindVertexArray(VAO);
+    //glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, NumVertices);
+
+    glBindVertexArray(0);
 }
 
 void Table::Rotation(double dx) {
@@ -243,13 +239,17 @@ void Table::Rotation(double dx) {
     currentRotation = glm::normalize(currentRotation);
 }
 
-void Table::Zoom(double yoffset) {
-    if (yoffset == -1) {
-        fov += fabs(fov) * 0.1f;
-    }
-    else if (yoffset == 1) {
-        fov -= fabs(fov) * 0.1f;
-    }
-}
+//void Table::Zoom(double yoffset) {
+//    if (yoffset < 0) {
+//        distanceFromCamera += 0.1f;
+//    }
+//    else if (yoffset > 0) {
+//        distanceFromCamera -= 0.1f;
+//    }
+//    if (distanceFromCamera < 1.0f) {
+//        distanceFromCamera = 1.0f;
+//    }
+//}
+
 
 

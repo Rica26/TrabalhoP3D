@@ -4,8 +4,6 @@ uniform mat4 Model;
 uniform mat4 View;
 uniform mat4 ModelView;		// View * Model
 
-uniform samplerCube cubeMap;
-
 // Estrutura da fonte de luz ambiente global
 struct AmbientLight {
 	vec3 ambient;	// Componente de luz ambiente global
@@ -70,7 +68,6 @@ vec3 diffuseColor;
 
 in vec3 vPositionEyeSpace;
 in vec3 vNormalEyeSpace;
-in vec3 textureVector;
 
 layout (location = 0) out vec4 fColor; // Cor final do fragmento
 

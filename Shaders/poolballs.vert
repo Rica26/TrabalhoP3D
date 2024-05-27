@@ -1,29 +1,23 @@
 #version 440 core
 
-uniform mat4 Model;
-uniform mat4 View;
-uniform mat4 ModelView;		// View * Model
-uniform mat4 Projection;
-uniform mat3 NormalMatrix;
-
-in vec3 vPosition;			// Coordenadas locais do vértice
-in vec3 vNormal;			// Normal do vértice
+layout(location = 0) in vec3 vPosition;
+layout(location = 1) in vec3 vNormal;
+layout(location = 2) in vec2 vTexCoords;
 
 out vec3 vPositionEyeSpace;
 out vec3 vNormalEyeSpace;
-out vec3 textureVector;
+out vec2 vTexCoord;
+
+uniform mat4 Model;
+uniform mat4 View;
+uniform mat4 Projection;
+uniform mat3 NormalMatrix;
 
 void main()
-{ 
-	// Posição do vértice em coordenadas do olho.
-	vPositionEyeSpace = (ModelView * vec4(vPosition, 1.0)).xyz;
-
-	// Transformar a normal do vértice.
-	vNormalEyeSpace = normalize(NormalMatrix * vNormal);
-
-	// Coordenada de textura para o CubeMap
-	textureVector = vPosition;
-
-	// Posição final do vértice (em coordenadas de clip)
-	gl_Position = Projection * ModelView * vec4(vPosition, 1.0f);
+{
+    // Transformações de posição
+    vPositionEyeSpace = vec3(View * Model * vec4(vPosition, 1.0));
+    vNormalEyeSpace = normalize(NormalMatrix * vNormal);
+    vTexCoord = vTexCoords;
+    gl_Position = Projection * View * Model * vec4(vPosition, 1.0);
 }
