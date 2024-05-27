@@ -21,6 +21,7 @@
 #include <glm/gtc/matrix_transform.hpp> 
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace LoadObj
 {
@@ -28,7 +29,7 @@ namespace LoadObj
 	{
 
 	public:
-		Ball(const glm::vec3& initialPositon, GLuint TextureID, GLuint shaderProgram, const Camera& camera, glm::vec3 orientation=glm::vec3(0,0,0), GLfloat scale=0.15f);
+		Ball(glm::vec3 position, GLuint shaderProgram, const Camera& camera, glm::vec3 orientation=glm::vec3(0,0,0), GLfloat scale=0.08f);
 		void Load(const std::string obj_model_filepath);
 		void Install();
 		void Render(glm::vec3 position, glm::vec3 orientation);
@@ -37,8 +38,9 @@ namespace LoadObj
 		std::vector<glm::vec3> vertices;
 		std::vector<glm::vec3> normals;
 		std::vector<glm::vec2> textcoords;
-		static std::vector<glm::vec3> getInitialBallPositions();
-
+		//static std::vector<glm::vec3> getInitialBallPositions();
+		//void Rotation(double dx);
+		void UpdateRotationMatrix(const glm::mat4& rotationMatrix);
 		
 	private:
 
@@ -48,6 +50,7 @@ namespace LoadObj
 		glm::mat4 view;
 		glm::mat4 projection;
 		glm::mat3 normalMatrix;
+		glm::mat4 rotationMatrix;
 
 		// VAO e VBO
 		GLuint VAO;
@@ -58,6 +61,7 @@ namespace LoadObj
 		GLuint textureID;
 		const Camera& camera;
 		GLfloat scale;
+		glm::quat currentRotation;
 
 	};
 

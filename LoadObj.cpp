@@ -16,7 +16,7 @@ namespace LoadObj {
 }
 
 
-	Ball::Ball(const glm::vec3& initialPositon, GLuint TextureID, GLuint shaderProgram, const Camera& camera, glm::vec3 orientation, GLfloat scale): position(initialPositon), textureID(TextureID), shaderProgram(shaderProgram), camera(camera), orientation(orientation), scale(scale) {
+	Ball::Ball(glm::vec3 position, GLuint shaderProgram, const Camera& camera, glm::vec3 orientation, GLfloat scale):position(position),rotationMatrix(rotationMatrix), shaderProgram(shaderProgram), camera(camera), orientation(orientation), scale(scale) {
 	
 
 
@@ -139,6 +139,7 @@ namespace LoadObj {
 	}
 	void Ball::LoadTexture(const char* file_path)
 	{
+		//GLuint textureID;
 		glGenTextures(1, &textureID);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureID);
@@ -224,30 +225,38 @@ namespace LoadObj {
 	}
 
 
-	
+	void Ball::UpdateRotationMatrix(const glm::mat4& rotationMatrix) {
+		this->rotationMatrix = rotationMatrix;
+	}
 
 
 	void Ball::Render(glm::vec3 position, glm::vec3 orientation) 
 	{
-		
+		this->position = position;
+		//GLuint textureID=0;
+		//this->rotationMatrix = rotationMatrix;
+		UpdateRotationMatrix(rotationMatrix);
+
 		glBindVertexArray(VAO);
 		//glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureID);
 
 		//glActiveTexture(GL_TEXTURE0);
 		
-
-		glm::mat4 model = glm::mat4(1.0f);
+		//glm::mat4 RotationMatrix = glm::mat4_cast(currentRotation);
+		model = glm::mat4(1.0f);
 		model= glm::scale(model, glm::vec3(scale));
+		model = model * rotationMatrix;
 		model = glm::translate(model, position);
-		model = glm::rotate(model, glm::radians(orientation.x), glm::vec3(1, 0, 0));
-		model = glm::rotate(model, glm::radians(orientation.y), glm::vec3(0, 1, 0));
-		model = glm::rotate(model, glm::radians(orientation.z), glm::vec3(0, 0, 1));
+		
+		//model = glm::rotate(model, glm::radians(orientation.x), glm::vec3(1, 0, 0));
+		//model = glm::rotate(model, glm::radians(orientation.y), glm::vec3(0, 1, 0));
+		//model = glm::rotate(model, glm::radians(orientation.z), glm::vec3(0, 0, 1));
 
-		glm::mat4 view = camera.getViewMatrix();
-		glm::mat4 projection = camera.getProjectionMatrix(4.0f / 3.0f);
-		glm::mat4 modelView = view * model;
-		glm::mat3 normalMatrix = glm::inverseTranspose(glm::mat3(modelView));
+		view = camera.getViewMatrix();
+		projection = camera.getProjectionMatrix(4.0f / 3.0f);
+		glm::mat4 modelView = view  * model;
+		normalMatrix = glm::inverseTranspose(glm::mat3(modelView));
 
 		glUseProgram(shaderProgram);
 
@@ -301,26 +310,32 @@ namespace LoadObj {
 	
 	}
 
-	std::vector<glm::vec3> Ball::getInitialBallPositions() {
-		std::vector<glm::vec3> positions = {
-			glm::vec3(0.0f, 0.0f, 0.0f), // Ball 1
-			glm::vec3(0.1f, 0.0f, 0.0f), // Ball 2
-			glm::vec3(0.2f, 0.0f, 0.0f), // Ball 3
-			glm::vec3(0.3f, 0.0f, 0.0f), // Ball 4
-			glm::vec3(0.4f, 0.0f, 0.0f), // Ball 5
-			glm::vec3(0.5f, 0.0f, 0.0f), // Ball 6
-			glm::vec3(0.6f, 0.0f, 0.0f), // Ball 7
-			glm::vec3(0.7f, 0.0f, 0.0f), // Ball 8
-			glm::vec3(0.8f, 0.0f, 0.0f), // Ball 9
-			glm::vec3(0.9f, 0.0f, 0.0f), // Ball 10
-			glm::vec3(1.0f, 0.0f, 0.0f), // Ball 11
-			glm::vec3(1.1f, 0.0f, 0.0f), // Ball 12
-			glm::vec3(1.2f, 0.0f, 0.0f), // Ball 13
-			glm::vec3(1.3f, 0.0f, 0.0f), // Ball 14
-			glm::vec3(1.4f, 0.0f, 0.0f)  // Ball 15
-		};
+	//std::vector<glm::vec3> Ball::getInitialBallPositions() {
+	//	std::vector<glm::vec3> positions = {
+	//		glm::vec3(0.0f, 0.0f, 0.0f), // Ball 1
+	//		glm::vec3(0.1f, 0.0f, 0.0f), // Ball 2
+	//		glm::vec3(0.2f, 0.0f, 0.0f), // Ball 3
+	//		glm::vec3(0.3f, 0.0f, 0.0f), // Ball 4
+	//		glm::vec3(0.4f, 0.0f, 0.0f), // Ball 5
+	//		glm::vec3(0.5f, 0.0f, 0.0f), // Ball 6
+	//		glm::vec3(0.6f, 0.0f, 0.0f), // Ball 7
+	//		glm::vec3(0.7f, 0.0f, 0.0f), // Ball 8
+	//		glm::vec3(0.8f, 0.0f, 0.0f), // Ball 9
+	//		glm::vec3(0.9f, 0.0f, 0.0f), // Ball 10
+	//		glm::vec3(1.0f, 0.0f, 0.0f), // Ball 11
+	//		glm::vec3(1.1f, 0.0f, 0.0f), // Ball 12
+	//		glm::vec3(1.2f, 0.0f, 0.0f), // Ball 13
+	//		glm::vec3(1.3f, 0.0f, 0.0f), // Ball 14
+	//		glm::vec3(1.4f, 0.0f, 0.0f)  // Ball 15
+	//	};
 
-		return positions;
-	}
+	//	return positions;
+	//}
+	/*void Ball::Rotation(double dx) {
+		float angleY = glm::radians((float)dx);
+		glm::quat qy = glm::angleAxis(angleY, glm::vec3(0.0f, 1.0f, 0.0f));
+		currentRotation = qy * currentRotation;
+		currentRotation = glm::normalize(currentRotation);
+	}*/
  
 }

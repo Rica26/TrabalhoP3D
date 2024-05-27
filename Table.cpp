@@ -239,6 +239,10 @@ void Table::Rotation(double dx) {
     currentRotation = glm::normalize(currentRotation);
 }
 
+const glm::mat4& Table::GetRotationMatrix() const {
+    return glm::mat4_cast(currentRotation);
+}
+
 //void Table::Zoom(double yoffset) {
 //    if (yoffset < 0) {
 //        distanceFromCamera += 0.1f;

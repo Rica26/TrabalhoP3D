@@ -17,6 +17,8 @@ public:
 	void init(GLuint shaderProgram);
 	void drawTable(GLuint shaderProgram, const Camera& camera);
 	void Rotation(double dx);
+	glm::quat currentRotation;
+	const glm::mat4&GetRotationMatrix() const;
 	//void Zoom(double yoffset);
 
 private:
@@ -28,7 +30,7 @@ private:
 	glm::mat4 view;
 	glm::mat4 projection;
 	glm::mat3 normalMatrix;
-	glm::quat currentRotation;
+	
 	//GLfloat fov;
 	//GLfloat distanceFromCamera;
 
