@@ -29,7 +29,7 @@ namespace LoadObj
 	{
 
 	public:
-		Ball(glm::vec3 position, GLuint shaderProgram, const Camera& camera, glm::vec3 orientation=glm::vec3(0,0,0), GLfloat scale=0.08f);
+		Ball(glm::vec3 position, GLuint shaderProgram, const Camera& camera, glm::vec3 orientation=glm::vec3(0,0,0), GLfloat scale=0.09f);
 		void Load(const std::string obj_model_filepath);
 		void Install();
 		void Render(glm::vec3 position, glm::vec3 orientation);
@@ -38,9 +38,13 @@ namespace LoadObj
 		std::vector<glm::vec3> vertices;
 		std::vector<glm::vec3> normals;
 		std::vector<glm::vec2> textcoords;
-		//static std::vector<glm::vec3> getInitialBallPositions();
-		//void Rotation(double dx);
 		void UpdateRotationMatrix(const glm::mat4& rotationMatrix);
+		void StartAnimation();
+		void Update(float deltaTime, const std::vector<Ball>& balls);
+		bool CheckCollision(const std::vector<Ball>& balls);
+		glm::vec3 getPosition() const { return position; }
+
+		bool animating;
 		
 	private:
 
@@ -51,6 +55,15 @@ namespace LoadObj
 		glm::mat4 projection;
 		glm::mat3 normalMatrix;
 		glm::mat4 rotationMatrix;
+		struct Material {
+			glm::vec3 ambientColor;
+			glm::vec3 diffuseColor;
+			glm::vec3 specularColor;
+			float shininess;
+		}material;
+		static const float BALL_RADIUS;
+		const float SPEED = 2.0f;
+
 
 		// VAO e VBO
 		GLuint VAO;
@@ -61,7 +74,9 @@ namespace LoadObj
 		GLuint textureID;
 		const Camera& camera;
 		GLfloat scale;
-		glm::quat currentRotation;
+		glm::vec3 velocity;
+		float angularVelocity;
+		glm:: mat4 ballRotation;
 
 	};
 

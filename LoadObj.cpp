@@ -15,8 +15,9 @@ namespace LoadObj {
     } \
 }
 
+	const float Ball::BALL_RADIUS = 1.0f;
 
-	Ball::Ball(glm::vec3 position, GLuint shaderProgram, const Camera& camera, glm::vec3 orientation, GLfloat scale):position(position),rotationMatrix(rotationMatrix), shaderProgram(shaderProgram), camera(camera), orientation(orientation), scale(scale) {
+	Ball::Ball(glm::vec3 position, GLuint shaderProgram, const Camera& camera, glm::vec3 orientation, GLfloat scale):position(position),rotationMatrix(rotationMatrix), shaderProgram(shaderProgram), camera(camera), orientation(orientation), scale(scale), animating(false) {
 	
 
 
@@ -114,20 +115,19 @@ namespace LoadObj {
 				break; // EOF = End Of File. Quit the loop
 
 			if (strcmp(lineHeader, "Ka") == 0) {
-				glm::vec3 ambientColor;
-				fscanf_s(mtlFile, "%f %f %f", &ambientColor.r, &ambientColor.g, &ambientColor.b);
+				fscanf_s(mtlFile, "%f %f %f", &material.ambientColor.r, &material.ambientColor.g, &material.ambientColor.b);
 			}
 			else if (strcmp(lineHeader, "Kd") == 0) {
-				glm::vec3 diffuseColor;
-				fscanf_s(mtlFile, "%f %f %f", &diffuseColor.r, &diffuseColor.g, &diffuseColor.b);
+				
+				fscanf_s(mtlFile, "%f %f %f", &material.diffuseColor.r, &material.diffuseColor.g, &material.diffuseColor.b);
 			}
 			else if (strcmp(lineHeader, "Ks") == 0) {
-				glm::vec3 specularColor;
-				fscanf_s(mtlFile, "%f %f %f", &specularColor.r, &specularColor.g, &specularColor.b);
+	
+				fscanf_s(mtlFile, "%f %f %f", &material.specularColor.r, &material.specularColor.g, &material.specularColor.b);
 			}
 			else if (strcmp(lineHeader, "Ns") == 0) {
-				float shininess;
-				fscanf_s(mtlFile, "%f", &shininess);
+				
+				fscanf_s(mtlFile, "%f", &material.shininess);
 			}
 			else if (strcmp(lineHeader, "map_Kd") == 0) {
 				char textureFilename[128];
@@ -144,11 +144,6 @@ namespace LoadObj {
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, textureID);
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
 		int width, height, nChannels;
 		// Ativa a inversão vertical da imagem, aquando da sua leitura para memória.
 		stbi_set_flip_vertically_on_load(true);
@@ -158,6 +153,10 @@ namespace LoadObj {
 			// Carrega os dados da imagem para o Objeto de Textura vinculado ao target GL_TEXTURE_2D da Unidade de Textura ativa.
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, nChannels == 4 ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, imageData);
 
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			// Gera o Mipmap para essa textura
 			glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -233,9 +232,10 @@ namespace LoadObj {
 	void Ball::Render(glm::vec3 position, glm::vec3 orientation) 
 	{
 		this->position = position;
+		glm::vec3 cameraPosition = camera.getPosition();
 		//GLuint textureID=0;
 		//this->rotationMatrix = rotationMatrix;
-		UpdateRotationMatrix(rotationMatrix);
+		//UpdateRotationMatrix(rotationMatrix);
 
 		glBindVertexArray(VAO);
 		//glActiveTexture(GL_TEXTURE0);
@@ -248,10 +248,9 @@ namespace LoadObj {
 		model= glm::scale(model, glm::vec3(scale));
 		model = model * rotationMatrix;
 		model = glm::translate(model, position);
-		
-		//model = glm::rotate(model, glm::radians(orientation.x), glm::vec3(1, 0, 0));
-		//model = glm::rotate(model, glm::radians(orientation.y), glm::vec3(0, 1, 0));
-		//model = glm::rotate(model, glm::radians(orientation.z), glm::vec3(0, 0, 1));
+		model = glm::rotate(model, glm::radians(orientation.x), glm::vec3(1, 0, 0));
+		model = glm::rotate(model, glm::radians(orientation.y), glm::vec3(0, 1, 0));
+		model = glm::rotate(model, glm::radians(orientation.z), glm::vec3(0, 0, 1));
 
 		view = camera.getViewMatrix();
 		projection = camera.getProjectionMatrix(4.0f / 3.0f);
@@ -262,6 +261,7 @@ namespace LoadObj {
 
 		GLint modelLoc = glGetUniformLocation(shaderProgram, "Model");
 		GLint viewLoc = glGetUniformLocation(shaderProgram, "View");
+		GLint modelViewLoc = glGetUniformLocation(shaderProgram, "ModelView");
 		GLint projectionLoc = glGetUniformLocation(shaderProgram, "Projection");
 		GLint normalMatrixLoc = glGetUniformLocation(shaderProgram, "NormalMatrix");
 
@@ -271,7 +271,8 @@ namespace LoadObj {
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
-		/*glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "ambientLight.ambient"), 1, glm::value_ptr(glm::vec3(0.1, 0.1, 0.1)));
+		glUniformMatrix4fv(modelViewLoc, 1, GL_FALSE, glm::value_ptr(modelView));
+		glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "ambientLight.ambient"), 1, glm::value_ptr(glm::vec3(0.1, 0.1, 0.1)));
 		glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "directionalLight.direction"), 1, glm::value_ptr(glm::vec3(1.0, 0.0, 0.0)));
 		glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "directionalLight.ambient"), 1, glm::value_ptr(glm::vec3(0.2, 0.2, 0.2)));
 		glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "directionalLight.diffuse"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
@@ -293,49 +294,56 @@ namespace LoadObj {
 		glProgramUniform1f(shaderProgram, glGetUniformLocation(shaderProgram, "pointLight[1].linear"), 0.06f);
 		glProgramUniform1f(shaderProgram, glGetUniformLocation(shaderProgram, "pointLight[1].quadratic"), 0.02f);
 
-		glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "material.emissive"), 1, glm::value_ptr(glm::vec3(0.5, 0.5, 0.5)));
-		glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "material.ambient"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-		glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "material.diffuse"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-		glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "material.specular"), 1, glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-		glProgramUniform1f(shaderProgram, glGetUniformLocation(shaderProgram, "material.shininess"), 32.0f);*/
-
-		//glBindTexture(GL_TEXTURE_2D, textureID);
+		glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "material.ambient"), 1, glm::value_ptr(material.ambientColor));
+		glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "material.diffuse"), 1, glm::value_ptr(material.diffuseColor));
+		glProgramUniform3fv(shaderProgram, glGetUniformLocation(shaderProgram, "material.specular"), 1, glm::value_ptr(material.specularColor));
+		glProgramUniform1f(shaderProgram, glGetUniformLocation(shaderProgram, "material.shininess"), material.shininess);
 		glDrawArrays(GL_TRIANGLES, 0, vertices.size());
 
 		CHECK_GL_ERROR();
 
 		glBindVertexArray(0);
-		//std::cout << "Rendering ball at position: " << position.x << ", " << position.y << ", " << position.z << std::endl;
 
 	
 	}
 
-	//std::vector<glm::vec3> Ball::getInitialBallPositions() {
-	//	std::vector<glm::vec3> positions = {
-	//		glm::vec3(0.0f, 0.0f, 0.0f), // Ball 1
-	//		glm::vec3(0.1f, 0.0f, 0.0f), // Ball 2
-	//		glm::vec3(0.2f, 0.0f, 0.0f), // Ball 3
-	//		glm::vec3(0.3f, 0.0f, 0.0f), // Ball 4
-	//		glm::vec3(0.4f, 0.0f, 0.0f), // Ball 5
-	//		glm::vec3(0.5f, 0.0f, 0.0f), // Ball 6
-	//		glm::vec3(0.6f, 0.0f, 0.0f), // Ball 7
-	//		glm::vec3(0.7f, 0.0f, 0.0f), // Ball 8
-	//		glm::vec3(0.8f, 0.0f, 0.0f), // Ball 9
-	//		glm::vec3(0.9f, 0.0f, 0.0f), // Ball 10
-	//		glm::vec3(1.0f, 0.0f, 0.0f), // Ball 11
-	//		glm::vec3(1.1f, 0.0f, 0.0f), // Ball 12
-	//		glm::vec3(1.2f, 0.0f, 0.0f), // Ball 13
-	//		glm::vec3(1.3f, 0.0f, 0.0f), // Ball 14
-	//		glm::vec3(1.4f, 0.0f, 0.0f)  // Ball 15
-	//	};
 
-	//	return positions;
-	//}
-	/*void Ball::Rotation(double dx) {
-		float angleY = glm::radians((float)dx);
-		glm::quat qy = glm::angleAxis(angleY, glm::vec3(0.0f, 1.0f, 0.0f));
-		currentRotation = qy * currentRotation;
-		currentRotation = glm::normalize(currentRotation);
-	}*/
+	void Ball::StartAnimation() {
+		animating = true;
+		velocity = glm::vec3(0.0f, 0.0f, -SPEED); // Define the velocity of the ball
+		angularVelocity = SPEED/BALL_RADIUS; // Define the angular velocity of the ball
+	}
+
+	void Ball::Update(float deltaTime, const std::vector<Ball>& balls) {
+		if (animating) {
+			if (CheckCollision(balls)) {
+				animating = false; // Stop movement on collision
+				return;
+			}
+
+			position += velocity * deltaTime; // Update position based on velocity and deltaTime
+
+			// Update rotation based on distance traveled
+			float distance = glm::length(velocity * deltaTime);
+			float angle = glm::degrees(distance / BALL_RADIUS);
+			orientation.x -= angle;
+		}
+		
+	}
+
+
+
+	bool Ball::CheckCollision(const std::vector<Ball>& balls) {
+		for (const auto& ball : balls) {
+			if (&ball != this) {
+				float distance = glm::distance(position, ball.getPosition());
+				if (distance <= (2.0f * BALL_RADIUS)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
  
 }

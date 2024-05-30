@@ -12,11 +12,8 @@ public:
     Camera();
     glm::mat4 getViewMatrix() const;
     glm::mat4 getProjectionMatrix(float aspectRatio) const;
-
-    void setPosition(const glm::vec3& position);
-    void setTarget(const glm::vec3& target);
-    void setUp(const glm::vec3& up);
-    void setFOV(float fov);
+    glm::vec3 getPosition() const;
+    void ZOOM(double yoffset);
 
 private:
     glm::vec3 position;

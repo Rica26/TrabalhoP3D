@@ -32,9 +32,11 @@ void print_error(int error, const char* description);
 void print_gl_info(void);
 void init(GLuint tableProgram);
 //void display(GLuint tableProgram);
-//void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+void scrollCallback(GLFWwindow* window,double xoffset, double yoffset);
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void updateBalls(float deltaTime);
 
 #define WIDTH 800
 #define HEIGHT 600
@@ -43,6 +45,7 @@ bool mousePressed = false;
 double lastMouseX, lastMouseY;
 Table table;
 glm::mat4 rotationMatrix = glm::mat4(1.0f);
+LoadObj::Ball* animatedBall = nullptr;
 //std::vector<glm::vec3> initialPositions = LoadObj::Ball::getInitialBallPositions();
 std::vector<LoadObj::Ball> balls;   
 Camera camera;
@@ -68,9 +71,10 @@ int main(void) {
     print_gl_info();
 
 
-    //glfwSetScrollCallback(window, scrollCallback);
+    glfwSetScrollCallback(window, scrollCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetCursorPosCallback(window, cursorPositionCallback);
+    glfwSetKeyCallback(window, keyCallback);
 
     ShaderInfo tableShaders[] = {
             
@@ -101,37 +105,26 @@ int main(void) {
     init(tableProgram);
     //rotationMatrix = table.GetRotationMatrix();
     std::vector<glm::vec3> ballPositions = {
-        
-    
-      glm::vec3(0.0f, 2.0f, 0.0f),   // Bola 1 (no centro da mesa)
-    
-      glm::vec3(2.0f, 2.0f, 2.0f),   // Bola 2
-    
-      glm::vec3(2.0f, 2.0f, -2.0f),  // Bola 3
-    
-      glm::vec3(-2.0f, 2.0f, 2.0f),  // Bola 4
-    
-      glm::vec3(-2.0f, 2.0f, -2.0f), // Bola 5
-    
-      glm::vec3(4.0f, 2.0f, 4.0f),   // Bola 6
-    
-      glm::vec3(4.0f, 2.0f, -4.0f),  // Bola 7
-    
-      glm::vec3(-4.0f, 2.0f, 4.0f),  // Bola 8
-    
-      glm::vec3(-4.0f, 2.0f, -4.0f), // Bola 9
-    
-      glm::vec3(6.0f, 2.0f, 6.0f),   // Bola 10
-    
-      glm::vec3(6.0f, 2.0f, -6.0f),  // Bola 11
-    
-      glm::vec3(-6.0f, 2.0f, 6.0f),  // Bola 12
-    
-      glm::vec3(-6.0f, 2.0f, -6.0f), // Bola 13
-    
-      glm::vec3(8.0f, 2.0f, 8.0f),   // Bola 14
-    
-      glm::vec3(8.0f, 2.0f, -8.0f)
+        glm::vec3(0.0f, 2.0f, 7.0f),   // Bola de partida (mais distante)
+
+        // Formação triangular
+        glm::vec3(-1.0f, 2.0f, -2.0f),  
+        glm::vec3(1.0f, 2.0f, -2.0f),   
+
+        glm::vec3(-2.0f, 2.0f, -4.0f),  
+        glm::vec3(0.0f, 2.0f, -4.0f),   
+        glm::vec3(2.0f, 2.0f, -4.0f),   
+
+        glm::vec3(-3.0f, 2.0f, -6.0f),  
+        glm::vec3(-1.0f, 2.0f, -6.0f),  
+        glm::vec3(1.0f, 2.0f, -6.0f),   
+        glm::vec3(3.0f, 2.0f, -6.0f),   
+
+        glm::vec3(-4.0f, 2.0f, -8.0f),  
+        glm::vec3(-2.0f, 2.0f, -8.0f),  
+        glm::vec3(0.0f, 2.0f, -8.0f),   
+        glm::vec3(2.0f, 2.0f, -8.0f),   
+        glm::vec3(4.0f, 2.0f, -8.0f)    
     };
     for (int i = 0; i < ballPositions.size(); ++i) {
         LoadObj::Ball ball(ballPositions[i], ballProgram, camera);
@@ -148,6 +141,8 @@ int main(void) {
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
+    animatedBall = &balls[0];
+    float lastTime = glfwGetTime();
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -160,23 +155,25 @@ int main(void) {
 
         rotationMatrix = table.GetRotationMatrix();
 
-        /*for (auto& ball : balls) {
-            ball.UpdateRotationMatrix(rotationMatrix);
-        }*/
-        table.drawTable(tableProgram, camera);
-        //rotationMatrix = table.GetRotationMatrix();
+        
+        float currentTime = glfwGetTime();
+        float deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
 
-        /*for (auto& ball : balls) {
-            ball.UpdateRotationMatrix(rotationMatrix);
-        }*/
+        // Atualizar animações
+        
 
         table.drawTable(tableProgram, camera);
+        
 
-        for (auto& ball : balls) {
+        //table.drawTable(tableProgram, camera);
+
+        for (LoadObj::Ball& ball : balls) {
             ball.UpdateRotationMatrix(rotationMatrix);
-            ball.Render(ball.position, glm::vec3(0, 0, 0)); // Renderize as bolas com a rotação aplicada
+            //ball.Update(deltaTime, balls);
+            ball.Render(ball.position, ball.orientation); // Renderize as bolas com a rotação aplicada
         }
-
+        updateBalls(deltaTime);
         
 
         glfwSwapBuffers(window);
@@ -215,9 +212,9 @@ void print_error(int error, const char* description) {
     cout << description << endl;
 }
 
-//void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-//    table.Zoom(yoffset);
-//}
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+  camera.ZOOM(yoffset);
+}
 
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
@@ -243,6 +240,19 @@ void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
     }
 }
 
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (action == GLFW_PRESS) {
+        if (key == GLFW_KEY_SPACE && animatedBall != nullptr) {
+            animatedBall->StartAnimation();
+        }
+    }
+}
+
+void updateBalls(float deltaTime) {
+    for (auto& ball : balls) {
+        ball.Update(deltaTime, balls);
+    }
+}
 void init(GLuint tableProgram) {
 
     table.init(tableProgram);
