@@ -43,8 +43,11 @@ namespace LoadObj
 		void Update(float deltaTime, const std::vector<Ball>& balls);
 		bool CheckCollision(const std::vector<Ball>& balls);
 		glm::vec3 getPosition() const { return position; }
-
 		bool animating;
+		bool activeAmbientLight=true;
+		bool activeDirectionalLight=true;
+		bool activePointLight=true;
+		bool activeSpotLight=true;
 		
 	private:
 

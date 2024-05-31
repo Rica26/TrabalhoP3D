@@ -19,6 +19,10 @@ public:
 	void Rotation(double dx);
 	glm::quat currentRotation;
 	const glm::mat4&GetRotationMatrix() const;
+	bool activeAmbientLight = true;
+	bool activeDirectionalLight = true;
+	bool activePointLight = true;
+	bool activeSpotLight = true;
 	//void Zoom(double yoffset);
 
 private:

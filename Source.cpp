@@ -245,6 +245,34 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         if (key == GLFW_KEY_SPACE && animatedBall != nullptr) {
             animatedBall->StartAnimation();
         }
+        if (key == GLFW_KEY_1) {
+        
+            for (LoadObj::Ball& ball : balls) {
+                ball.activeAmbientLight = !ball.activeAmbientLight;
+            }
+            table.activeAmbientLight = !table.activeAmbientLight;
+            
+        }
+        if (key == GLFW_KEY_2) {
+            for (LoadObj::Ball& ball : balls) {
+                ball.activeDirectionalLight = !ball.activeDirectionalLight;
+            }
+            table.activeDirectionalLight = !table.activeDirectionalLight;
+        }
+        if (key == GLFW_KEY_3) {
+            for (LoadObj::Ball& ball : balls) {
+                ball.activePointLight= !ball.activePointLight;
+            }
+            table.activePointLight = !table.activePointLight;
+        }
+      /*  if (key == GLFW_KEY_4) {
+            for (LoadObj::Ball& ball : balls) {
+                if (ball.activeAmbientLight)
+                    ball.activeAmbientLight = false;
+                else
+                    ball.activeAmbientLight = true;
+            }
+        }*/
     }
 }
 
@@ -256,9 +284,6 @@ void updateBalls(float deltaTime) {
 void init(GLuint tableProgram) {
 
     table.init(tableProgram);
-    //LoadObj::Ball ball;
-    //ball.Load("Balls/ball2.obj");
-    //ball.Install();
     glViewport(0, 0, WIDTH, HEIGHT);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
