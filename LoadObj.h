@@ -79,7 +79,6 @@ namespace LoadObj
 		GLfloat scale;
 		glm::vec3 velocity;
 		float angularVelocity;
-		glm:: mat4 ballRotation;
 
 	};
 

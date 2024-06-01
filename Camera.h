@@ -10,9 +10,8 @@
 class Camera {
 public:
     Camera();
-    glm::mat4 getViewMatrix() const;
-    glm::mat4 getProjectionMatrix(float aspectRatio) const;
-    glm::vec3 getPosition() const;
+    const glm::mat4 getViewMatrix() const;
+    const glm::mat4 getProjectionMatrix(float aspectRatio) const;
     void ZOOM(double yoffset);
 
 private:

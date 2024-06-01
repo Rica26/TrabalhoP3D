@@ -22,7 +22,7 @@ void main()
 	// Transformar a normal do vértice.
 	vNormalEyeSpace = normalize(NormalMatrix * vNormal);
 
-	// Coordenada de textura para o CubeMap
+	// Coordenada de textura para o Sampler2D
 	textureVector = vTexCoords;
 
 	// Posição final do vértice (em coordenadas de clip)
